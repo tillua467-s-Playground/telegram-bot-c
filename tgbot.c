@@ -289,7 +289,7 @@ void send_document(long long *CID, const char *file_name, const int reply_id){
     free(url);
 }
 
-void delete_message(long long *CID, const int reply_id){
+void delete_message(long long *CID, const int reply_id, long long *group_chat_id){
     CURL *curl;
     CURLcode res;
     Mem_struct chunk;
@@ -299,7 +299,11 @@ void delete_message(long long *CID, const int reply_id){
 
     curl = curl_easy_init();
     if (curl){
+        if (group_chat_id != -1){
         snprintf(url, sizeof(url), "%sdeleteMessage?chat_id=%lld&message_id=%d", Tg_link, *CID, reply_id);
+        } else{
+            snprintf(url, sizeof(url), "%sdeleteMessage?chat_id=%lld&message_id=%d", Tg_link, *group_chat_id, reply_id);
+        }
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
