@@ -11,7 +11,7 @@ size_t callback(char *ptr, size_t size, size_t nmemb, void *userdata){
 
     char *tempptr = realloc(mem->memory, mem->size + total_size + 1);
 
-    if(tempptr == NULL){ // if the pointer is NULL that means it's out of memory
+    if(tempptr == NULL){
         printf("Not enought memory(realloc returned NULL)\n");
         return 0;
     }
@@ -22,6 +22,42 @@ size_t callback(char *ptr, size_t size, size_t nmemb, void *userdata){
     mem->memory[mem->size] = 0;
 
     return total_size;
+}
+
+char* latest_file(const char* file_path){
+
+    DIR* dir = opendir(file_path);
+    struct dirent* entry;
+    struct stat file_info;
+    char* latest = NULL;
+    time_t latest_modified_time = 0;
+
+    if (dir == NULL){
+        fprintf(stderr, "Failed to open the directory\n");
+        return NULL;
+    } while((entry = readdir(dir)) != NULL){
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+        continue;
+
+        size_t full_path_len = strlen(file_path) + strlen(entry->d_name) + 2;
+        char* path = malloc(full_path_len);
+        if(!path){
+            fprintf(stderr, "malloc failed\n");
+            free(latest);
+        }
+        snprintf(path, full_path_len, "%s/%s", file_path, entry->d_name);
+        if (stat(path, &file_info) == 0){
+            if(file_info.st_mtime > latest_modified_time){
+                latest_modified_time = file_info.st_mtime;
+                free(latest);
+                latest = strdup(entry->d_name);
+            }
+        }
+        free(path);
+    }
+
+    closedir(dir);
+    return latest;
 }
 
 void last_up_add(){
@@ -83,7 +119,7 @@ void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *r
                                     last_update = (long long) up_id->valuedouble;
                                     last_up_add();
                                 } else {
-                                    fprintf(stderr, "Warning: Could not get valid 'update_id' from last update.\n");
+                                    fprintf(stderr, "Error: Could not get update_id from last update.\n");
                                 }
                             }
                             cJSON *first_update_obj = cJSON_GetArrayItem(result, 0);
@@ -94,7 +130,7 @@ void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *r
                                     if (reply_msg_id && cJSON_IsNumber(reply_msg_id)){
                                         *reply_id = (int) reply_msg_id->valueint;
                                     } else {
-                                        fprintf(stderr, "Warning: 'message_id' not found or not a number in message.\n");
+                                        fprintf(stderr, "Error: message_id not found in message.\n");
                                     }
 
                                     cJSON *chat_info = cJSON_GetObjectItem(mesg, "chat");
@@ -103,17 +139,17 @@ void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *r
                                         if (chat_id && cJSON_IsNumber(chat_id)){
                                             *group_chat_id = (long long) chat_id->valuedouble;
                                         } else {
-                                            fprintf(stderr, "Warning: 'chat id' not found or not a number in chat info.\n");
+                                            fprintf(stderr, "Error: chat id not found in chat info.\n");
                                         }
                                     } else {
-                                        fprintf(stderr, "Warning: 'chat' object not found in message.\n");
+                                        fprintf(stderr, "Error: chat object not found in message.\n");
                                     }
 
                                     cJSON *text_item = cJSON_GetObjectItem(mesg, "text");
                                     if(text_item && cJSON_IsString(text_item)){
                                         *C_RES = strdup(text_item->valuestring);
                                     } else {
-                                        fprintf(stderr, "Info: 'text' field not found in message (e.g., sticker, photo, command).\n");
+                                        fprintf(stderr, "Error: text field not found in message\n");
                                     }
 
                                     cJSON *from_info = cJSON_GetObjectItem(mesg, "from");
@@ -122,26 +158,26 @@ void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *r
                                         if (sender_id && cJSON_IsNumber(sender_id)){
                                             *C_ID = (long long) sender_id->valuedouble;
                                         } else {
-                                            fprintf(stderr, "Warning: 'from id' not found or not a number in sender info.\n");
+                                            fprintf(stderr, "Error: from id not found in sender info.\n");
                                         }
                                     } else {
-                                        fprintf(stderr, "Warning: 'from' object not found in message.\n");
+                                        fprintf(stderr, "Error: from object not found in message.\n");
                                     }
                                 } else {
-                                    fprintf(stderr, "Info: First update is not a 'message' type (e.g., edited_message, callback_query).\n");
+                                    fprintf(stderr, "Error: First update is not a message\n");
                                 }
                             }
                         } else {
-                            fprintf(stderr, "No new updates in 'result' array.\n");
+                            fprintf(stderr, "No new updates\n");
                         }
                     } else {
-                        fprintf(stderr, "Error: 'result' object not found or not an array.\n");
+                        fprintf(stderr, "Error: result object not found\n");
                     }
                 } else {
-                    fprintf(stderr, "Error: API response 'ok' status is false or not found.\n");
+                    fprintf(stderr, "Error: ok status is false\n");
                 }
             } else {
-                fprintf(stderr, "Error: Failed to parse JSON response from Telegram API.\n");
+                fprintf(stderr, "Error: Failed to parse JSON\n");
             }
             cJSON_Delete(root);
         }
@@ -198,3 +234,4 @@ void send_message(long long *CID, const char *message, long long reply_id){
         fprintf(stderr, "Failed to initialize cURL\n");
     }
 }
+
