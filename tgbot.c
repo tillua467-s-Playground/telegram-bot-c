@@ -235,3 +235,56 @@ void send_message(long long *CID, const char *message, long long reply_id){
     }
 }
 
+
+void send_document(long long *CID, const char *file_name, const int reply_id){
+    CURL *curl;
+    CURLcode res;
+    char *url;
+    char cid_strn[64];
+    snprintf(cid_strn, sizeof(cid_strn), "%lld", *CID);
+
+    struct stat st;
+    if(stat(file_name, &st) != 0){
+        fprintf(stderr, "Error: stat\n");
+        return;
+    }
+
+    curl = curl_easy_init();
+    if(curl){
+        int url_length = snprintf(NULL, 0, "%ssendDocument", Tg_link);
+        url = malloc(url_length + 1);
+        snprintf(url, url_length + 1, "%ssendDocument", Tg_link);
+
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_mime *form = curl_mime_init(curl);
+        // filed1 -> hold chat id -> where if the file is going
+        curl_mimepart *field1 = curl_mime_addpart(form);
+        curl_mime_name(field1, "chat_id");
+        curl_mime_data(field1, cid_strn, CURL_ZERO_TERMINATED);
+        // filed2 -> hold the document -> that will be sended
+        curl_mimepart *field2 = curl_mime_addpart(form);
+        curl_mime_name(field2, "document");
+        curl_mime_filedata(field2, file_name);
+        // feild3 -> if the user wanna reply it
+        if(reply_id != -1){
+            char reply_id_char[32];
+            snprintf(reply_id_char, sizeof(reply_id_char), "%d", reply_id);
+            curl_mimepart *field3 = curl_mime_addpart(form);
+            curl_mime_name(field3, "reply_to_message_id");
+            curl_mime_data(field3, reply_id_char, CURL_ZERO_TERMINATED);
+        }
+        curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
+        res = curl_easy_perform(curl);
+        if (res == CURLE_OK){
+            fprintf(stderr, "Uploaded!: %s\n", file_name);
+            curl_mime_free(form);
+            curl_easy_cleanup(curl);
+        } else {
+            fprintf(stderr, "Upload failed: %s\n", curl_easy_strerror(res));
+        }
+    } else {
+        fprintf(stderr, "Failed to initialize cURL\n");
+    }
+
+    free(url);
+}
