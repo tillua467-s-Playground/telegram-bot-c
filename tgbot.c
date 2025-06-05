@@ -288,3 +288,32 @@ void send_document(long long *CID, const char *file_name, const int reply_id){
 
     free(url);
 }
+
+void delete_message(long long *CID, const int reply_id){
+    CURL *curl;
+    CURLcode res;
+    Mem_struct chunk;
+    chunk.memory = malloc(1);
+    chunk.size = 0;
+    char url[1024];
+
+    curl = curl_easy_init();
+    if (curl){
+        snprintf(url, sizeof(url), "%sdeleteMessage?chat_id=%lld&message_id=%d", Tg_link, *CID, reply_id);
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+
+        res = curl_easy_perform(curl);
+        if(res != CURLE_OK){
+            fprintf(stderr, "Failed: %s\n", curl_easy_strerror(res));
+        }
+        printf("server response:\n%s\n", chunk.memory);
+
+        free(chunk.memory);
+        curl_easy_cleanup(curl);
+    } else {
+        fprintf(stderr, "Failed to initialize cURL\n");
+    }
+}
+
