@@ -27,5 +27,6 @@ void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *r
 int send_message(long long *CID, const char *message, long long reply_id);
 void send_document(long long *CID, const char *file_name, const int reply_id);
 void delete_message(long long *CID, const int reply_id, long long *group_chat_id);
+void edit_message(long long *CID, const int edit_msg_id, const char *message);
 
 #endif
