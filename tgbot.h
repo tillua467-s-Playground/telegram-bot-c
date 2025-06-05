@@ -24,8 +24,8 @@ char* latest_file(const char* file_path);
 
 // main functions
 void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *reply_id);
-void send_message(long long *CID, const char *message, long long reply_id);
+int send_message(long long *CID, const char *message, long long reply_id);
 void send_document(long long *CID, const char *file_name, const int reply_id);
-void delete_message(long long *CID, const int reply_id);
+void delete_message(long long *CID, const int reply_id, long long *group_chat_id);
 
 #endif

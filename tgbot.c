@@ -190,13 +190,14 @@ void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *r
     sleep(1);
 }
 
-void send_message(long long *CID, const char *message, long long reply_id){
+int send_message(long long *CID, const char *message, long long reply_id){
     CURL *curl;
     CURLcode res;
     Mem_struct chunk;
     chunk.memory = malloc(1);
     chunk.size = 0;
     char *url;
+    int bot_msgid = -1;
 
     curl = curl_easy_init();
 
@@ -224,15 +225,34 @@ void send_message(long long *CID, const char *message, long long reply_id){
         if(res != CURLE_OK){
             fprintf(stderr, "Failed: %s\n", curl_easy_strerror(res));
         }
-        printf("Measage was sent to %lld successfully", *CID);
+        printf("Measage was sent to %lld successfully\n", *CID);
         printf("server response:\n%s\n", chunk.memory);
 
+        cJSON *root = cJSON_Parse(chunk.memory);
+            if (root) {
+                cJSON *result = cJSON_GetObjectItem(root, "result");
+                if (result) {
+                    cJSON *msg_id = cJSON_GetObjectItem(result, "message_id");
+                    if (msg_id && cJSON_IsNumber(msg_id)) {
+                        bot_msgid = msg_id->valueint;
+                        printf("Bot message ID: %d\n", bot_msgid);
+                    } else {
+                        fprintf(stderr, "Failed to parse JSON\n");
+                    }
+                } else {
+                    fprintf(stderr, "Failed to parse JSON\n");
+                }
+            } else{
+                fprintf(stderr, "Failed to parse JSON\n");
+            }
+        cJSON_Delete(root);
         free(chunk.memory);
         free(url);
         curl_easy_cleanup(curl);
     } else{
         fprintf(stderr, "Failed to initialize cURL\n");
     }
+    return bot_msgid;
 }
 
 
@@ -289,7 +309,7 @@ void send_document(long long *CID, const char *file_name, const int reply_id){
     free(url);
 }
 
-void delete_message(long long *CID, const int reply_id, long long *group_chat_id){
+void delete_message(long long *CID, const int bot_msgid, long long *group_chat_id){
     CURL *curl;
     CURLcode res;
     Mem_struct chunk;
@@ -299,10 +319,10 @@ void delete_message(long long *CID, const int reply_id, long long *group_chat_id
 
     curl = curl_easy_init();
     if (curl){
-        if (group_chat_id != -1){
-        snprintf(url, sizeof(url), "%sdeleteMessage?chat_id=%lld&message_id=%d", Tg_link, *CID, reply_id);
+        if (*group_chat_id != -1){
+        snprintf(url, sizeof(url), "%sdeleteMessage?chat_id=%lld&message_id=%d", Tg_link, *group_chat_id, bot_msgid);
         } else{
-            snprintf(url, sizeof(url), "%sdeleteMessage?chat_id=%lld&message_id=%d", Tg_link, *group_chat_id, reply_id);
+            snprintf(url, sizeof(url), "%sdeleteMessage?chat_id=%lld&message_id=%d", Tg_link, *CID, bot_msgid);
         }
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callback);
