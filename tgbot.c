@@ -341,3 +341,40 @@ void delete_message(long long *CID, const int bot_msgid, long long *group_chat_i
     }
 }
 
+void edit_message(long long *CID, const int edit_msg_id, const char *message){
+    CURL *curl;
+    CURLcode res;
+    Mem_struct chunk;
+    chunk.memory = malloc(1);
+    chunk.size = 0;
+    char *url;
+
+    curl = curl_easy_init();
+
+    if(curl){
+        char *escaped_message = curl_easy_escape(curl, message, 0);
+
+        int url_length = snprintf(NULL, 0, "%seditMessageText?chat_id=%lld&message_id=%d&text=%s", Tg_link, *CID, edit_msg_id, escaped_message);
+        url = malloc(url_length + 1);
+        snprintf(url, url_length + 1,"%seditMessageText?chat_id=%lld&message_id=%d&text=%s", Tg_link, *CID, edit_msg_id, escaped_message);
+        curl_free(escaped_message);
+
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+
+        res = curl_easy_perform(curl);
+
+        if(res != CURLE_OK){
+            fprintf(stderr, "Failed: %s\n", curl_easy_strerror(res));
+        }
+        printf("The id %lld message was edited successfully\n", edit_msg_id);
+        printf("server response:\n%s\n", chunk.memory);
+        free(chunk.memory);
+        free(url);
+        curl_easy_cleanup(curl);
+    } else{
+        fprintf(stderr, "Failed to initialize cURL\n");
+    }
+
+}
