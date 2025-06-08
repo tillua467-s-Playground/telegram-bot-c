@@ -190,7 +190,7 @@ void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *r
     sleep(1);
 }
 
-int send_message(long long *CID, const char *message, long long reply_id){
+int send_message(long long *CID, const char *message, const int reply, long long reply_id){
     CURL *curl;
     CURLcode res;
     Mem_struct chunk;
@@ -204,15 +204,15 @@ int send_message(long long *CID, const char *message, long long reply_id){
     if(curl){
         char *escaped_message = curl_easy_escape(curl, message, 0);
 
-        if(reply_id == -1){
+        if(reply == 0){
             int url_length = snprintf(NULL, 0, "%ssendMessage?chat_id=%lld&text=%s", Tg_link, *CID, escaped_message);
             url = malloc(url_length + 1);
             snprintf(url, url_length + 1, "%ssendMessage?chat_id=%lld&text=%s", Tg_link, *CID, escaped_message);
             curl_free(escaped_message);
         } else{
-            int url_length = snprintf(NULL, 0, "%ssendMessage?chat_id=%lld&text=%s&reply_to_message=%lld", Tg_link, *CID, escaped_message, reply_id);
+            int url_length = snprintf(NULL, 0, "%ssendMessage?chat_id=%lld&text=%s&reply_to_message_id=%lld", Tg_link, *CID, escaped_message, reply_id);
             url = malloc(url_length + 1);
-            snprintf(url, url_length + 1, "%ssendMessage?chat_id=%lld&text=%s&reply_to_message=%lld", Tg_link, *CID, escaped_message, reply_id);
+            snprintf(url, url_length + 1, "%ssendMessage?chat_id=%lld&text=%s&reply_to_message_id=%lld", Tg_link, *CID, escaped_message, reply_id);
             curl_free(escaped_message);
         }
 
@@ -256,7 +256,7 @@ int send_message(long long *CID, const char *message, long long reply_id){
 }
 
 
-void send_document(long long *CID, const char *file_name, const int reply_id){
+void send_document(long long *CID, const char *file_name, const int reply, const int reply_id){
     CURL *curl;
     CURLcode res;
     char *url;
@@ -286,7 +286,7 @@ void send_document(long long *CID, const char *file_name, const int reply_id){
         curl_mime_name(field2, "document");
         curl_mime_filedata(field2, file_name);
         // feild3 -> if the user wanna reply it
-        if(reply_id != -1){
+        if(reply == 0){
             char reply_id_char[32];
             snprintf(reply_id_char, sizeof(reply_id_char), "%d", reply_id);
             curl_mimepart *field3 = curl_mime_addpart(form);
