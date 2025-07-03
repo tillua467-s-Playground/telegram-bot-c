@@ -225,22 +225,22 @@ int send_message(long long *CID, const char *message, const int reply, long long
         printf("server response:\n%s\n", chunk.memory);
 
         cJSON *root = cJSON_Parse(chunk.memory);
-            if (root) {
-                cJSON *result = cJSON_GetObjectItem(root, "result");
-                if (result) {
-                    cJSON *msg_id = cJSON_GetObjectItem(result, "message_id");
-                    if (msg_id && cJSON_IsNumber(msg_id)) {
-                        bot_msgid = msg_id->valueint;
-                        printf("Bot message ID: %d\n", bot_msgid);
-                    } else {
-                        fprintf(stderr, "Failed to parse JSON\n");
-                    }
-                } else {
-                    fprintf(stderr, "Failed to parse JSON\n");
-                }
-            } else{
-                fprintf(stderr, "Failed to parse JSON\n");
-            }
+        if (!root)
+            fprintf(stderr, "Failed to parse JSON\n");
+
+        cJSON *result = cJSON_GetObjectItem(root, "result");
+        if (result)
+            fprintf(stderr, "Failed to parse JSON\n");
+
+        cJSON *msg_id = cJSON_GetObjectItem(result, "message_id");
+        if (!msg_id){
+            fprintf(stderr, "Failed to parse JSON\n");
+            cJSON_Delete(root);
+            return -1;
+        }
+        
+        bot_msgid = msg_id->valueint;
+        printf("Bot message ID: %d\n", bot_msgid);
         cJSON_Delete(root);
         free(chunk.memory);
         free(url);
