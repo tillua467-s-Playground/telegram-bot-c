@@ -183,7 +183,6 @@ void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *r
     }
 
     free(chunk.memory);
-    sleep(1);
 }
 
 int send_message(long long *CID, const char *message, const int reply, long long reply_id){
