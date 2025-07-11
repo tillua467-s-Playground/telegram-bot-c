@@ -5,5 +5,8 @@
         "markdown": false,
         "scminput": false
     },
-    "cmake.ignoreCMakeListsMissing": true
+    "files.associations": {
+        "stdio.h": "c"
+    },
+   "cmake.ignoreCMakeListsMissing": true
 }

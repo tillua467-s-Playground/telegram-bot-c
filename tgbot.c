@@ -77,15 +77,15 @@ void last_update_read(){
 
 }
 
-void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *reply_id){
+updateData *get_updates(){
+    updateData* userdata = malloc(sizeof(updateData));
     CURL *curl;
     CURLcode res;
     char url[512];
     Mem_struct chunk;
     chunk.memory = malloc(1);
     chunk.size = 0;
-
-    *C_RES = NULL;
+    userdata->chat_Result = NULL;
 
     last_update_read();
     sprintf(url, "%sgetUpdates?offset=%lld&limit=15", Tg_link, last_update + 1);
@@ -118,7 +118,7 @@ void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *r
                 cJSON_Delete(root);
                 curl_easy_cleanup(curl);
                 free(chunk.memory);
-                return;
+                return NULL;
             }
             cJSON *last_update_obj = cJSON_GetArrayItem(result, num_results - 1);
             if (!last_update_obj)
@@ -140,9 +140,9 @@ void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *r
                 cJSON_Delete(root);
                 curl_easy_cleanup(curl);
                 free(chunk.memory);
-                return;
+                return NULL;
             }
-            *reply_id = (int) reply_msg_id->valueint;
+            userdata->reply_id = (int) reply_msg_id->valueint;
             cJSON *chat_info = cJSON_GetObjectItem(mesg, "chat");
             if (!chat_info)
                 fprintf(stderr, "Error: chat object not found in message.\n");
@@ -152,18 +152,18 @@ void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *r
                 cJSON_Delete(root);
                 curl_easy_cleanup(curl);
                 free(chunk.memory);
-                return;
+                return NULL;
             }
-            *group_chat_id = (long long) chat_id->valuedouble;
+            userdata->group_chat_id = (long long) chat_id->valuedouble;
             cJSON *text_item = cJSON_GetObjectItem(mesg, "text");
             if(!text_item){
                 fprintf(stderr, "Error: text field not found in message\n");
                 cJSON_Delete(root);
                 curl_easy_cleanup(curl);
                 free(chunk.memory);
-                return;
+                return NULL;
             }
-            *C_RES = strdup(text_item->valuestring);
+            userdata->chat_Result = strdup(text_item->valuestring);
             cJSON *from_info = cJSON_GetObjectItem(mesg, "from");
             if (!from_info)
                 fprintf(stderr, "Error: from object not found in message.\n");
@@ -173,9 +173,9 @@ void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *r
                 cJSON_Delete(root);
                 curl_easy_cleanup(curl);
                 free(chunk.memory);
-                return;
+                return NULL;
             }
-            *C_ID = (long long) sender_id->valuedouble;
+            userdata->chat_id = (long long) sender_id->valuedouble;
         }
         curl_easy_cleanup(curl);
     } else {
@@ -183,6 +183,8 @@ void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *r
     }
 
     free(chunk.memory);
+
+    return userdata;
 }
 
 int send_message(long long *CID, const char *message, const int reply, long long reply_id){
