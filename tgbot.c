@@ -109,12 +109,15 @@ updateData *get_updates(){
             cJSON *root = cJSON_Parse(chunk.memory);
             if(!root)
                 fprintf(stderr, "Error: Failed to parse JSON\n");
+            
             cJSON *ok_status = cJSON_GetObjectItem(root, "ok");
             if (cJSON_IsFalse(ok_status))
                 fprintf(stderr, "Error: ok status is false, there was some error getting updates\n");
+            
            cJSON *result = cJSON_GetObjectItem(root, "result");
             if (!result)
                 fprintf(stderr, "Error: result object not found\n");
+
             int num_results = cJSON_GetArraySize(result);
             if (num_results == 0){
                 fprintf(stderr, "No new updates\n");
@@ -123,20 +126,26 @@ updateData *get_updates(){
                 free(chunk.memory);
                 return NULL;
             }
+
             cJSON *last_update_obj = cJSON_GetArrayItem(result, num_results - 1);
             if (!last_update_obj)
                 fprintf(stderr, "last update is NULL\n");
+
             cJSON *up_id = cJSON_GetObjectItem(last_update_obj, "update_id");
             if (!up_id)
                 fprintf(stderr, "Error: Could not get update_id from last update.\n");
+
             last_update = (long long) up_id->valuedouble;
             last_up_add();
+
             cJSON *first_update_obj = cJSON_GetArrayItem(result, 0);
             if (!first_update_obj)
                 fprintf(stderr, "Error: Couldn't parse RESULT\n");
+
             cJSON *mesg = cJSON_GetObjectItem(first_update_obj, "message");
             if (!mesg)
                 fprintf(stderr, "Error: First update is not a message\n");
+
             cJSON *reply_msg_id = cJSON_GetObjectItem(mesg, "message_id");
             if (!reply_msg_id){
                 fprintf(stderr, "Error: message_id not found in message.\n");
@@ -145,10 +154,75 @@ updateData *get_updates(){
                 free(chunk.memory);
                 return NULL;
             }
+
+            if(cJSON_GetObjectItem(mesg, "photo")){
+                cJSON *pic_det = cJSON_GetObjectItem(mesg, "photo");
+                int photo_count = cJSON_GetArraySize(pic_det);
+                if(pic_det == 0) return NULL;
+                cJSON *tpic = cJSON_GetArrayItem(pic_det, photo_count - 1);
+                if(tpic == 0) return NULL;
+                cJSON *pic_id = cJSON_GetObjectItem(tpic, "file_id");
+                if(!pic_id){
+                    fprintf(stderr, "Error: tpic buffer is empty\n");
+                    cJSON(root);
+                    curl_easy_cleanup(curl);
+                    free(chunk.memory);
+                    return NULL;
+                }
+                userdata->file_id = pic_id->valuestring;
+            }
+
+            if(cJSON_GetObjectItem(mesg, "video")){
+                cJSON *vid_det = cJSON_GetObjectItem(mesg, "video");
+                if(!vid_det)
+                    fprintf(stderr, "Error: video details are missing.\n");
+                cJSON *vid = cJSON_GetObjectItem(vid_det, "file_id");
+                if(!vid){
+                    fprintf(stderr, "Error: video id is missing.\n");
+                    cJSON(root);
+                    curl_easy_cleanup(curl);
+                    free(chunk.memory);
+                    return NULL;
+                }
+                userdata->file_id = vid->valuestring;
+            }
+
+            if(cJSON_GetObjectItem(mesg, "audio")){
+                cJSON *vid_det = cJSON_GetObjectItem(mesg, "audio");
+                if(!vid_det)
+                    fprintf(stderr, "Error: audio details are missing.\n");
+                cJSON *vid = cJSON_GetObjectItem(vid_det, "file_id");
+                if(!vid){
+                    fprintf(stderr, "Error: audio id is missing.\n");
+                    cJSON(root);
+                    curl_easy_cleanup(curl);
+                    free(chunk.memory);
+                    return NULL;
+                }
+                userdata->file_id = vid->valuestring;
+            }
+
+            if(cJSON_GetObjectItem(mesg, "document")){
+                cJSON *doc = cJSON_GetObjectItem(mesg, "document");
+                if(!doc)
+                    fprintf(stderr, "Error: document not found.\n");
+                cJSON *doc_id = cJSON_GetObjectItem(doc, "file_id");
+                if(!doc_id){
+                    fprintf(stderr, "Error: doc_id not found.\n");
+                    cJSON_Delete(root);
+                    curl_easy_cleanup(curl);
+                    free(chunk.memory);
+                    return NULL;
+                }
+                userdata->file_id = doc_id->valuestring;
+            }
+
             userdata->reply_id = (int) reply_msg_id->valueint;
+
             cJSON *chat_info = cJSON_GetObjectItem(mesg, "chat");
             if (!chat_info)
                 fprintf(stderr, "Error: chat object not found in message.\n");
+
             cJSON *chat_id = cJSON_GetObjectItem(chat_info, "id");
             if (!chat_id){
                 fprintf(stderr, "Error: chat id not found in chat info.\n");
@@ -157,7 +231,9 @@ updateData *get_updates(){
                 free(chunk.memory);
                 return NULL;
             }
+
             userdata->group_chat_id = (long long) chat_id->valuedouble;
+
             if(cJSON_GetObjectItem(mesg, "text")){
                 cJSON *text_item = cJSON_GetObjectItem(mesg, "text");
                 if(!text_item){

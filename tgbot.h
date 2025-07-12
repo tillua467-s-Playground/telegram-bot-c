@@ -21,6 +21,7 @@ typedef struct updateData {
     long long chat_id;
     long long group_chat_id;
     int reply_id;
+    char *file_id;
 } updateData;
 
 // optional or helper functions
