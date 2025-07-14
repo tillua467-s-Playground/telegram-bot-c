@@ -2,6 +2,7 @@
 
 #define BOT_API "NULL"
 #define Tg_link "https://api.telegram.org/bot" BOT_API "/"
+#define Tg_link_file "https://api.telegram.org/file/bot" BOT_API "/"
 
 long long last_update = 0;
 
@@ -22,6 +23,19 @@ size_t callback(char *ptr, size_t size, size_t nmemb, void *userdata){
     mem->memory[mem->size] = 0;
 
     return total_size;
+}
+
+void cdir(const char *filepath) {
+    int size = sizeof(filepath);
+    char *path_copy = malloc(size);
+    strncpy(path_copy, filepath, sizeof(path_copy));
+    path_copy[sizeof(path_copy) - 1] = '\0';
+
+    char *slash = strrchr(path_copy, '/');
+    if (slash) {
+        *slash = '\0';
+        mkdir_p(path_copy);
+    }
 }
 
 char* latest_file(const char* file_path){
@@ -83,6 +97,7 @@ updateData *get_updates(){
     userdata->chat_Result = "chat";
     userdata->group_chat_id = -1;
     userdata->reply_id = -1;
+    userdata->file_id = "file_id=NULL";
     CURL *curl;
     CURLcode res;
     char url[512];
@@ -154,9 +169,9 @@ updateData *get_updates(){
                 free(chunk.memory);
                 return NULL;
             }
-
-            if(cJSON_GetObjectItem(mesg, "photo")){
-                cJSON *pic_det = cJSON_GetObjectItem(mesg, "photo");
+            cJSON *pic_det = cJSON_GetObjectItem(mesg, "photo");
+            if(pic_det){
+                
                 int photo_count = cJSON_GetArraySize(pic_det);
                 if(pic_det == 0) return NULL;
                 cJSON *tpic = cJSON_GetArrayItem(pic_det, photo_count - 1);
@@ -171,9 +186,8 @@ updateData *get_updates(){
                 }
                 userdata->file_id = pic_id->valuestring;
             }
-
-            if(cJSON_GetObjectItem(mesg, "video")){
-                cJSON *vid_det = cJSON_GetObjectItem(mesg, "video");
+            cJSON *vid_det = cJSON_GetObjectItem(mesg, "video");        
+            if(vid_det){
                 if(!vid_det)
                     fprintf(stderr, "Error: video details are missing.\n");
                 cJSON *vid = cJSON_GetObjectItem(vid_det, "file_id");
@@ -186,12 +200,11 @@ updateData *get_updates(){
                 }
                 userdata->file_id = vid->valuestring;
             }
-
-            if(cJSON_GetObjectItem(mesg, "audio")){
-                cJSON *vid_det = cJSON_GetObjectItem(mesg, "audio");
-                if(!vid_det)
+            cJSON *aud_det = cJSON_GetObjectItem(mesg, "audio");
+            if(aud_det){
+                if(!aud_det)
                     fprintf(stderr, "Error: audio details are missing.\n");
-                cJSON *vid = cJSON_GetObjectItem(vid_det, "file_id");
+                cJSON *vid = cJSON_GetObjectItem(aud_det, "file_id");
                 if(!vid){
                     fprintf(stderr, "Error: audio id is missing.\n");
                     cJSON(root);
@@ -201,9 +214,8 @@ updateData *get_updates(){
                 }
                 userdata->file_id = vid->valuestring;
             }
-
-            if(cJSON_GetObjectItem(mesg, "document")){
-                cJSON *doc = cJSON_GetObjectItem(mesg, "document");
+            cJSON *doc = cJSON_GetObjectItem(mesg, "document");
+            if(doc){
                 if(!doc)
                     fprintf(stderr, "Error: document not found.\n");
                 cJSON *doc_id = cJSON_GetObjectItem(doc, "file_id");
@@ -293,9 +305,62 @@ void get_document(char *file_id){
     if(res != CURLE_OK)
         fprintf(stderr, "Failed: %s\n", curl_easy_strerror(res));
 
-    printf("file_id: %s got it!", file_id);
+    printf("file_id: %s got it!\n", chunk.memory);
+    // file download
+    cJSON *root = cJSON_Parse(chunk.memory);
+    if(!root)
+        fprintf(stderr, "Failed: to parse json\n");
+    cJSON *status = cJSON_GetObjectItem(root, "ok");
+    if(!status)
+        fprintf(stderr, "Failed: to get the status\n");
+    if(cJSON_IsFalse(status))
+        fprintf(stderr, "Error: ok status is false, there was some error getting file address\n");
+    cJSON *resu = cJSON_GetObjectItem(root, "result");
+    if(!resu)
+        fprintf(stderr, "Failed: to get the result\n");
+    cJSON *pFILE = cJSON_GetObjectItem(resu, "file_path");
+    if(!pFILE)
+        fprintf(stderr, "Error: file_path is missing\n");
 
     free(chunk.memory);
+    free(url);
+    curl_easy_cleanup(curl);
+
+    Mem_struct chunk2;
+    chunk2.memory = malloc(1);
+    chunk2.size = 0;
+
+    curl = curl_easy_init();
+
+    if(!curl)
+        fprintf(stderr, "Failed to initialize cURL\n");
+    
+    int url_len = snprintf(NULL, 0, "%s%s", Tg_link_file, pFILE->valuestring);
+    url = malloc(url_len + 1);
+    snprintf(url, url_len + 1, "%s%s", Tg_link_file, pFILE->valuestring);
+
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk2);
+
+    res = curl_easy_perform(curl);
+    if(res != CURLE_OK)
+        fprintf(stderr, "Failed: %s\n", curl_easy_strerror(res));
+
+    printf("SAVING FILE: %s", pFILE->valuestring);
+    cdir(pFILE->valuestring);
+
+    FILE *fp = fopen(pFILE->valuestring, "wb");
+    if (!fp)
+        fprintf(stderr, "Error opening file for writing: %s\n", pFILE->valuestring);
+    else {
+        fwrite(chunk2.memory, 1, chunk2.size, fp);
+        fclose(fp);
+        printf("File saved as: %s\n", pFILE->valuestring);
+    }
+
+    printf("Server response: %s\n", chunk2.memory);
+    free(chunk2.memory);
     free(url);
     curl_easy_cleanup(curl);
 }

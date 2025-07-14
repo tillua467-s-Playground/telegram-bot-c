@@ -10,6 +10,17 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+
+#ifdef _WIN32
+#include <direct.h>
+#define mkdir_p(dir) _mkdir(dir)
+#else
+#include <unistd.h>
+#define mkdir_p(dir) mkdir(dir, 0777)
+#endif
 
 typedef struct Mem_struct {
     char *memory;
