@@ -32,6 +32,7 @@ char* latest_file(const char* file_path);
 
 // main functions
 updateData *get_updates();
+void get_document(char *file_id);
 int send_message(long long *CID, const char *message, const int reply, long long reply_id);
 void send_document(long long *CID, const char *file_name, const int reply, const int reply_id);
 void delete_message(long long *CID, const int bot_msgid, long long *group_chat_id);

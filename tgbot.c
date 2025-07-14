@@ -268,6 +268,38 @@ updateData *get_updates(){
     return userdata;
 }
 
+void get_document(char *file_id){
+    CURL *curl;
+    CURLcode res;
+    Mem_struct chunk;
+    chunk.memory = malloc(1);
+    chunk.size = 0;
+    char *url;
+
+    curl = curl_easy_init();
+
+    if(!curl)
+        fprintf(stderr, "Failed to initialize cURL\n");
+    
+    int url_lenght = snprintf(NULL, 0, "%sgetFile?file_id=%s", Tg_link, file_id);
+    url = malloc(url_lenght + 1);
+    snprintf(url, url_lenght + 1, "%sgetFile?file_id=%s", Tg_link, file_id);
+
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+
+    res = curl_easy_perform(curl);
+    if(res != CURLE_OK)
+        fprintf(stderr, "Failed: %s\n", curl_easy_strerror(res));
+
+    printf("file_id: %s got it!", file_id);
+
+    free(chunk.memory);
+    free(url);
+    curl_easy_cleanup(curl);
+}
+
 int send_message(long long *CID, const char *message, const int reply, long long reply_id){
     CURL *curl;
     CURLcode res;
