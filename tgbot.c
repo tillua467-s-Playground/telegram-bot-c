@@ -126,9 +126,10 @@ updateData *get_updates(){
                 fprintf(stderr, "Error: Failed to parse JSON\n");
             
             cJSON *ok_status = cJSON_GetObjectItem(root, "ok");
-            if (cJSON_IsFalse(ok_status))
+            if (cJSON_IsFalse(ok_status)){
                 fprintf(stderr, "Error: ok status is false, there was some error getting updates\n");
-            
+                return NULL;
+            }
            cJSON *result = cJSON_GetObjectItem(root, "result");
             if (!result)
                 fprintf(stderr, "Error: result object not found\n");
@@ -313,8 +314,10 @@ void get_document(char *file_id){
     cJSON *status = cJSON_GetObjectItem(root, "ok");
     if(!status)
         fprintf(stderr, "Failed: to get the status\n");
-    if(cJSON_IsFalse(status))
+    if(cJSON_IsFalse(status)){
         fprintf(stderr, "Error: ok status is false, there was some error getting file address\n");
+        return;
+    }
     cJSON *resu = cJSON_GetObjectItem(root, "result");
     if(!resu)
         fprintf(stderr, "Failed: to get the result\n");
