@@ -65,7 +65,8 @@ char* latest_file(const char* file_path);
 ### Main Bot Functions
 
 ```c
-void get_updates(char **C_RES, long long *C_ID, long long *group_chat_id, int *reply_id);
+updateData *get_updates();
+void get_document(char *file_id);
 int send_message(long long *CID, const char *message, const int reply, long long reply_id);
 void send_document(long long *CID, const char *file_name, const int reply, const int reply_id);
 void delete_message(long long *CID, const int bot_msgid, long long *group_chat_id);
@@ -75,30 +76,49 @@ void edit_message(long long *CID, const int edit_msg_id, const char *message);
 ---
 
 ## Receiving Updates
-
-First, declare these variables:
-
+The Update data is actually struct that contain
 ```c
-char *C_RES = NULL;         // message content, initially NULL
-long long C_ID = -1;        // chat id, initially -1
-long long group_chat_ID = -1; // group chat id, initially -1
-int reply_id = -1;          // reply message id, initially -1
+typedef struct updateData {
+    char *chat_Result; // chat message initially "chat"
+    long long chat_id; // chat id initially -1
+    long long group_chat_id; // group chat id(if it exist) initially -1
+    int reply_id;  // reply message id, initially -1
+    char *file_id; // file id(if file was sent) initially "file_id=NULL"
+} updateData;
+```
+You can receiving updates by adding this line at the top of your code
+```c
+updateData *updateData = get_updates();
+```
+and access them as struct
+```c
+updateData->chat_Result // or this updateData.chat_Result if u prefer "." (dot)
 ```
 
-Call:
+All of the data are
 
-```c
-get_updates(&C_RES, &C_ID, &group_chat_ID, &reply_id);
-```
-
-This fills:
-
-- `C_RES` → The user's message
-- `C_ID` → The chat id
-- `group_chat_ID` → The group chat id (if any)
+- `chat_Result` → The user's message
+- `chat_id` → The chat id
+- `group_chat_id` → The group chat id (if any)
 - `reply_id` → The message id to reply to
+- `file_id` → To download a file by using the get_document() function
 
 ---
+
+## Getting Files
+
+When someone sends a file get_updates() function will capture a unique file id with that you can download any files
+the function get_document() need a file id inorder to download file
+```c
+void get_document(char *file_id);
+```
+
+start by checking if file id exist and then fetch it-
+```c
+if(userdata->file_id)
+    get_document(userdata->file_id);
+```
+Keep in mind that when a file is fetched, it will be saved in its respective folder based on its type. For example, photos will be saved in the Photos folder
 
 ## Sending Messages
 
